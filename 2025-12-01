@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>North Pole Safe Decoder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Mountains+of+Christmas:wght@400;700&display=swap');
+
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .christmas-font {
+            font-family: 'Mountains of Christmas', cursive;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+        <h1 class="text-4xl md:text-5xl text-red-500 font-bold christmas-font mb-2">
+            <i class="fas fa-snowflake text-white animate-pulse"></i> Secret Entrance Decoder
+        </h1>
+        <p class="text-slate-400 text-sm">Day 1: Safe Cracker Utility</p>
+    </header>
+
+    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Input Section -->
+        <section class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-green-400"><i class="fas fa-file-code mr-2"></i>Puzzle Input</h2>
+                <button onclick="loadExample()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition">Load Example</button>
+            </div>
+            
+            <textarea id="inputData" class="flex-1 w-full bg-slate-900 border border-slate-700 text-slate-300 p-4 rounded-lg font-mono text-sm focus:outline-none focus:border-green-500 resize-none mb-4" placeholder="Paste your rotation instructions here (e.g., L68, R48)..."></textarea>
+            
+            <button onclick="solve()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition transform active:scale-95 shadow-lg shadow-red-900/50">
+                <i class="fas fa-unlock mr-2"></i> CRACK SAFE
+            </button>
+        </section>
+
+        <!-- Output Section -->
+        <section class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
+            <h2 class="text-xl font-bold text-green-400 mb-4"><i class="fas fa-terminal mr-2"></i>System Output</h2>
+            
+            <!-- Result Display -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-black border border-green-500/30 p-3 rounded-lg text-center">
+                    <p class="text-slate-400 text-[10px] uppercase tracking-widest mb-1">Part 1 Password</p>
+                    <div id="resultDisplay" class="text-3xl font-bold text-green-500 font-mono">--</div>
+                </div>
+                <div class="bg-black border border-yellow-500/30 p-3 rounded-lg text-center">
+                    <p class="text-slate-400 text-[10px] uppercase tracking-widest mb-1">Part 2 Password</p>
+                    <div id="resultDisplay2" class="text-3xl font-bold text-yellow-500 font-mono">--</div>
+                </div>
+            </div>
+
+            <!-- Log -->
+            <div class="flex-1 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-slate-950 px-4 py-2 text-xs text-slate-500 border-b border-slate-800 flex justify-between">
+                    <span>Rotation Log</span>
+                    <span id="logCount">0 ops</span>
+                </div>
+                <div id="logContent" class="flex-1 overflow-y-auto p-4 font-mono text-sm space-y-1">
+                    <p class="text-slate-500 italic">Waiting for input...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-8 text-slate-600 text-xs text-center">
+        <p>North Pole Security Division • Authorized Personnel Only</p>
+    </footer>
+
+    <script>
+        const exampleData = `L68
+L30
+R48
+L5
+R60
+L55
+L1
+L99
+R14
+L82`;
+
+        function loadExample() {
+            document.getElementById('inputData').value = exampleData;
+        }
+
+        function solve() {
+            const inputRaw = document.getElementById('inputData').value;
+            const logEl = document.getElementById('logContent');
+            const resultEl = document.getElementById('resultDisplay');
+            const resultEl2 = document.getElementById('resultDisplay2');
+            const countEl = document.getElementById('logCount');
+
+            if (!inputRaw.trim()) {
+                alert("Please paste the puzzle input first.");
+                return;
+            }
+
+            // Clear previous results
+            logEl.innerHTML = '';
+            
+            // Initial State
+            let position = 50; 
+            const totalPositions = 100; // 0-99
+            
+            let part1Count = 0;
+            let part2Count = 0;
+
+            const lines = inputRaw.trim().split(/\n+/);
+            countEl.innerText = `${lines.length} ops`;
+
+            // Log Initial State
+            addLog(`START: Position ${position}`, 'text-blue-400');
+
+            lines.forEach((line, index) => {
+                const cleanLine = line.trim();
+                if (cleanLine.length < 2) return;
+
+                const direction = cleanLine.charAt(0).toUpperCase(); // L or R
+                const valueStr = cleanLine.substring(1);
+                const value = parseInt(valueStr, 10);
+
+                if (isNaN(value)) {
+                    addLog(`Error parsing line: ${cleanLine}`, 'text-red-500');
+                    return;
+                }
+
+                const prevPos = position;
+                
+                // --- PART 2 LOGIC (Simulation with optimization) ---
+                let stepsRemaining = value;
+                let stepsSimulated = 0;
+
+                // Optimization: If steps > 100, we circle fully around.
+                // Each full circle (100 steps) hits '0' exactly once, regardless of direction.
+                if (stepsRemaining >= 100) {
+                    const fullCircles = Math.floor(stepsRemaining / 100);
+                    part2Count += fullCircles;
+                    stepsSimulated = fullCircles * 100;
+                    stepsRemaining = stepsRemaining % 100; // Only simulate the remainder
+                }
+
+                // Simulate remaining clicks to catch zero crossings
+                // (We don't use simple math for the remainder because we need to know 
+                // exactly *when* the zero crossing happens relative to the start/end)
+                for (let i = 0; i < stepsRemaining; i++) {
+                    if (direction === 'L') {
+                        position--;
+                        if (position < 0) position = 99;
+                    } else {
+                        position++;
+                        if (position > 99) position = 0;
+                    }
+                    
+                    if (position === 0) {
+                        part2Count++;
+                    }
+                }
+
+                // --- PART 1 LOGIC (End State Only) ---
+                let p1Hit = false;
+                if (position === 0) {
+                    part1Count++;
+                    p1Hit = true;
+                }
+
+                // Log entry
+                const part2Inc = (value >= 100) 
+                    ? `(+${Math.floor(value/100)} loops + rem)` 
+                    : '';
+                
+                let logStyle = 'text-slate-300';
+                let logSuffix = '';
+
+                if (p1Hit) {
+                    logStyle = 'text-green-400 font-bold';
+                    logSuffix = ' [P1 HIT]';
+                }
+
+                addLog(
+                    `[${index + 1}] ${direction}${value}: ${prevPos} -> ${position}${logSuffix}`,
+                    logStyle
+                );
+            });
+
+            // Final Output
+            resultEl.innerText = part1Count;
+            resultEl2.innerText = part2Count;
+            
+            // Scroll to bottom of log
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function addLog(text, colorClass) {
+            const logEl = document.getElementById('logContent');
+            const p = document.createElement('div');
+            p.className = `${colorClass} py-0.5 border-b border-slate-800/50`;
+            p.innerText = text;
+            logEl.appendChild(p);
+        }
+    </script>
+</body>
+</html>
